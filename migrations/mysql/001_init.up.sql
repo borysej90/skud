@@ -1,10 +1,38 @@
+CREATE TABLE `readers`
+(
+    `id`         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT 'Номер зчитувача',
+    `ip_address` VARCHAR(39)
+) charset = utf8;
+
+CREATE TABLE `access_nodes`
+(
+    `id`              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `parent_id`       BIGINT UNSIGNED,
+    `name`            VARCHAR(255),
+    `entrance_reader` BIGINT UNSIGNED NOT NULL,
+    `exit_reader`     BIGINT UNSIGNED,
+    CONSTRAINT fk_access_nodes_parent FOREIGN KEY (`parent_id`) REFERENCES `access_nodes` (`id`),
+    CONSTRAINT fk_access_nodes_entrance FOREIGN KEY (`entrance_reader`) REFERENCES `readers` (`id`),
+    CONSTRAINT fk_access_nodes_exit FOREIGN KEY (`exit_reader`) REFERENCES `readers` (`id`)
+) charset = utf8;
+
+CREATE TABLE `transition_nodes`
+(
+    `id`        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `from_node` BIGINT UNSIGNED NOT NULL,
+    `to_node`   BIGINT UNSIGNED NOT NULL,
+    CONSTRAINT fk_transition_nodes_from FOREIGN KEY (`from_node`) REFERENCES `access_nodes` (`id`) ON DELETE CASCADE,
+    CONSTRAINT fk_transition_nodes_to FOREIGN KEY (`to_node`) REFERENCES `access_nodes` (`id`) ON DELETE CASCADE
+) charset = utf8;
+
 create table `employees`
 (
-    id     BIGINT UNSIGNED auto_increment
-        primary key,
-    name   VARCHAR(255)      not null comment 'ПІП працівника з 1С',
-    card   VARCHAR(20)       not null comment 'Код перепустки',
-    active TINYINT DEFAULT 1 null comment 'Чи активний працівник'
+    id        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name      VARCHAR(255)      NOT NULL COMMENT 'ПІП працівника з 1С',
+    card      VARCHAR(20)       NOT NULL COMMENT 'Код перепустки',
+    active    TINYINT DEFAULT 1 NULL COMMENT 'Чи активний працівник',
+    last_been BIGINT UNSIGNED,
+    CONSTRAINT FOREIGN KEY (`last_been`) REFERENCES `access_nodes` (`id`)
 ) charset = utf8;
 
 CREATE TABLE `doctors`
@@ -42,22 +70,13 @@ CREATE TABLE `members`
     CONSTRAINT fk_members_groups FOREIGN KEY (`group_id`) REFERENCES `groups` (`id`)
 ) charset = utf8;
 
-CREATE TABLE `readers`
+CREATE TABLE `transits`
 (
-    `id`         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT 'Номер зчитувача',
-    `ip_address` VARCHAR(39)
-) charset = utf8;
-
-CREATE TABLE `access_nodes`
-(
-    `id`              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `parent_id`       BIGINT UNSIGNED,
-    `name`            VARCHAR(255),
-    `entrance_reader` BIGINT UNSIGNED NOT NULL,
-    `exit_reader`     BIGINT UNSIGNED,
-    CONSTRAINT fk_access_nodes_parent FOREIGN KEY (`parent_id`) REFERENCES `access_nodes` (`id`),
-    CONSTRAINT fk_access_nodes_entrance FOREIGN KEY (`entrance_reader`) REFERENCES `readers` (`id`),
-    CONSTRAINT fk_access_nodes_exit FOREIGN KEY (`exit_reader`) REFERENCES `readers` (`id`)
+    `employee_id`        BIGINT UNSIGNED,
+    `transition_node_id` BIGINT UNSIGNED,
+    PRIMARY KEY (`employee_id`, `transition_node_id`),
+    CONSTRAINT fk_transits_employee FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`),
+    CONSTRAINT fk_transits_transition_node FOREIGN KEY (`transition_node_id`) REFERENCES `transition_nodes` (`id`)
 ) charset = utf8;
 
 CREATE TABLE `permissions`

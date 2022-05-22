@@ -30,7 +30,7 @@ CREATE TABLE `groups`
 (
     `id`   BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL COMMENT 'Ім''я групи доступу'
-    -- `department1c` VARCHAR(9) default '000000000' NOT NULL COMMENT 'Id підрозділу з 1С'
+    -- `departmentId` VARCHAR(9) default '000000000' NOT NULL COMMENT 'Id підрозділу з 1С'
 ) charset = utf8;
 
 CREATE TABLE `members`
@@ -56,8 +56,8 @@ CREATE TABLE `access_nodes`
     `entrance_reader` BIGINT UNSIGNED NOT NULL,
     `exit_reader`     BIGINT UNSIGNED,
     CONSTRAINT fk_access_nodes_parent FOREIGN KEY (`parent_id`) REFERENCES `access_nodes` (`id`),
-    CONSTRAINT fk_access_nodes_entrance FOREIGN KEY (entrance_reader) REFERENCES `readers` (`id`),
-    CONSTRAINT fk_access_nodes_exit FOREIGN KEY (exit_reader) REFERENCES `readers` (`id`)
+    CONSTRAINT fk_access_nodes_entrance FOREIGN KEY (`entrance_reader`) REFERENCES `readers` (`id`),
+    CONSTRAINT fk_access_nodes_exit FOREIGN KEY (`exit_reader`) REFERENCES `readers` (`id`)
 ) charset = utf8;
 
 CREATE TABLE `permissions`

@@ -7,16 +7,16 @@ import (
 )
 
 type accessNodeRecord struct {
-	ID               int64          `db:"id"`
-	ParentID         *sql.NullInt64 `db:"parent_id"`
-	Name             string         `db:"name"`
-	EntranceReaderID int64          `db:"entrance_reader"`
-	ExitReaderID     *sql.NullInt64 `db:"exit_reader"`
+	ID               sql.NullInt64 `db:"id"`
+	ParentID         sql.NullInt64 `db:"parent_id"`
+	Name             string        `db:"name"`
+	EntranceReaderID int64         `db:"entrance_reader"`
+	ExitReaderID     sql.NullInt64 `db:"exit_reader"`
 }
 
 func (r accessNodeRecord) toAccessNode() *skud.AccessNode {
 	return &skud.AccessNode{
-		ID:               r.ID,
+		ID:               r.ID.Int64,
 		Name:             r.Name,
 		ParentID:         r.ParentID.Int64,
 		EntranceReaderID: r.EntranceReaderID,

@@ -31,13 +31,18 @@ func (r *Repo) GetCurrentAccessNode(ctx context.Context, employeeID int64) (*sku
 	SELECT * FROM access_nodes
 	WHERE id = (SELECT last_been FROM employees WHERE id = ?)`
 	var record accessNodeRecord
-	if err := r.db.GetContext(ctx, &record, r.db.Rebind(stmt), employeeID); err != nil {
+	if err := r.db.GetContext(ctx, &record, r.db.Rebind(stmt), employeeID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, translateDBErr(err)
 	}
 	node := record.toAccessNode()
-	stmt = `SELECT * FROM access_nodes WHERE parent_id = ?`
+	stmt = `SELECT * FROM access_nodes WHERE parent_id IS NULL`
+	args := make([]interface{}, 0, 1)
+	if record.ID.Valid {
+		args = append(args, record.ID)
+		stmt = `SELECT * FROM access_nodes WHERE parent_id = ?`
+	}
 	records := make([]*accessNodeRecord, 0)
-	if err := r.db.SelectContext(ctx, &records, r.db.Rebind(stmt), node.ID); err != nil {
+	if err := r.db.SelectContext(ctx, &records, r.db.Rebind(stmt), args...); err != nil {
 		return nil, translateDBErr(err)
 	}
 	node.Children = make([]*skud.AccessNode, len(records))

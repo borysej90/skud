@@ -22,4 +22,13 @@ type Repository interface {
 	// GetAccessNodeChecks returns required checks that have to be passed by employee
 	// before entering node with ID equal to nodeID and actual checks results.
 	GetAccessNodeChecks(ctx context.Context, employeeID, nodeID int64) (skud.Checks, error)
+
+	// FindLastActiveTransition returns the last employee's transition to their current node.
+	//
+	// If none is found, ErrNotFound is returned.
+	FindLastActiveTransition(ctx context.Context, employeeID int64) (*skud.TransitionNode, error)
+
+	UpdateLastBeen(ctx context.Context, employeeID, nodeID int64) error
+
+	UpdateLastBeenToParent(ctx context.Context, employeeID int64) error
 }

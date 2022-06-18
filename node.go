@@ -47,3 +47,8 @@ func (n AccessNode) GetChild(nodeID int64) *AccessNode {
 	}
 	return nil
 }
+
+type TransitionNode struct {
+	FromNode int64
+	ToNode   int64
+}

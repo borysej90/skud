@@ -16,7 +16,7 @@ func New(repo repository.Repository) *SkudService {
 	return &SkudService{repo}
 }
 
-func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcardCode string) (string, bool, error) {
+func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcardCode string) (msg string, access bool, err error) {
 	employeeID, err := svc.repo.GetEmployeeIDByCode(ctx, passcardCode)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -34,8 +34,13 @@ func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcar
 	}
 	if node.ID == nodeID {
 		// person tries to exit current node
-		return skud.AccessGranted, true, nil
+		return skud.AccessGranted, true, svc.stepUpCurrentNode(ctx, employeeID)
 	}
+	defer func() {
+		if access {
+			err = svc.repo.UpdateLastBeen(ctx, employeeID, node.ID)
+		}
+	}()
 	node = node.GetChild(nodeID)
 	node.Checks, err = svc.repo.GetAccessNodeChecks(ctx, employeeID, nodeID)
 	if err != nil {
@@ -65,6 +70,17 @@ func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcar
 	default:
 	}
 	return msg, access, nil
+}
+
+func (svc *SkudService) stepUpCurrentNode(ctx context.Context, employeeID int64) error {
+	transitionNode, err := svc.repo.FindLastActiveTransition(ctx, employeeID)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return err
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return svc.repo.UpdateLastBeen(ctx, employeeID, transitionNode.FromNode)
+	}
+	return svc.repo.UpdateLastBeenToParent(ctx, employeeID)
 }
 
 func getDeniedMessage(health, sanitary bool) (msg string) {

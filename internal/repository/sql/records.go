@@ -23,3 +23,16 @@ func (r accessNodeRecord) toAccessNode() *skud.AccessNode {
 		ExitReaderID:     r.ExitReaderID.Int64,
 	}
 }
+
+type transitionNodeRecord struct {
+	ID   int64 `db:"id"`
+	From int64 `db:"from_node"`
+	To   int64 `db:"to_node"`
+}
+
+func (r transitionNodeRecord) toTransitionNode() *skud.TransitionNode {
+	return &skud.TransitionNode{
+		FromNode: r.From,
+		ToNode:   r.To,
+	}
+}

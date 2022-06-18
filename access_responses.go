@@ -9,4 +9,6 @@ const (
 	AccessDeniedNoSanitaryCheck    = "доступ заборонений: застарілий санітарний одяг"
 	AccessGrantedWithAllChecks     = "доступ дозволений з відміткою у лікаря та актуальним санітарним одягом"
 	AccessDeniedNoAnyChecks        = "доступ заборонений: необхідна відмітка у лікаря та актуальний санітарний одяг"
+
+	AccessDeniedUnknownEmployee = "доступ заборонений: картку не розпізнано"
 )

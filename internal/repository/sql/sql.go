@@ -80,6 +80,33 @@ FROM (
 	}, nil
 }
 
+func (r *Repo) FindLastActiveTransition(ctx context.Context, employeeID int64) (*skud.TransitionNode, error) {
+	stmt := `
+SELECT tn.id, from_node, to_node FROM transition_nodes AS tn
+JOIN transits AS t on t.transition_node_id = tn.id
+JOIN employees AS e on e.id = t.employee_id
+WHERE e.id = ? AND e.last_been = tn.to_node`
+	var record transitionNodeRecord
+	return record.toTransitionNode(), translateDBErr(r.db.GetContext(ctx, &record, r.db.Rebind(stmt), employeeID))
+}
+
+func (r *Repo) UpdateLastBeen(ctx context.Context, employeeID, nodeID int64) error {
+	stmt := "UPDATE employees SET last_been = ? WHERE id = ?"
+	lastBeen := sql.NullInt64{Int64: nodeID, Valid: nodeID != 0}
+	_, err := r.db.ExecContext(ctx, r.db.Rebind(stmt), lastBeen, employeeID)
+	return translateDBErr(err)
+}
+
+func (r *Repo) UpdateLastBeenToParent(ctx context.Context, employeeID int64) error {
+	stmt := `
+UPDATE employees AS e
+JOIN access_nodes an ON an.id = e.last_been
+SET e.last_been = an.parent_id
+WHERE e.id = ?`
+	_, err := r.db.ExecContext(ctx, r.db.Rebind(stmt), employeeID)
+	return translateDBErr(err)
+}
+
 func translateDBErr(err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return repository.ErrNotFound

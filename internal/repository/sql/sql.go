@@ -28,7 +28,7 @@ func (r *Repo) GetEmployeeIDByCode(ctx context.Context, code string) (int64, err
 func (r *Repo) GetCurrentAccessNode(ctx context.Context, employeeID int64) (*skud.AccessNode, error) {
 	stmt := `
 	SELECT * FROM access_nodes
-	WHERE id = (SELECT node_id FROM employee_current_nodes WHERE employee_id = ? LIMIT 1)`
+	WHERE id = (SELECT last_been FROM employees WHERE id = ?)`
 	var record accessNodeRecord
 	if err := r.db.GetContext(ctx, &record, r.db.Rebind(stmt), employeeID); err != nil {
 		return nil, err

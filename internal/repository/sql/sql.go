@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 
 	"skud"
 	"skud/internal/repository"
@@ -31,13 +32,13 @@ func (r *Repo) GetCurrentAccessNode(ctx context.Context, employeeID int64) (*sku
 	WHERE id = (SELECT last_been FROM employees WHERE id = ?)`
 	var record accessNodeRecord
 	if err := r.db.GetContext(ctx, &record, r.db.Rebind(stmt), employeeID); err != nil {
-		return nil, err
+		return nil, translateDBErr(err)
 	}
 	node := record.toAccessNode()
 	stmt = `SELECT * FROM access_nodes WHERE parent_id = ?`
 	records := make([]*accessNodeRecord, 0)
 	if err := r.db.SelectContext(ctx, &records, r.db.Rebind(stmt), node.ID); err != nil {
-		return nil, err
+		return nil, translateDBErr(err)
 	}
 	node.Children = make([]*skud.AccessNode, len(records))
 	for i, rec := range records {
@@ -49,11 +50,11 @@ func (r *Repo) GetCurrentAccessNode(ctx context.Context, employeeID int64) (*sku
 func (r *Repo) GetAccessNodeChecks(ctx context.Context, employeeID, nodeID int64) (skud.Checks, error) {
 	stmt := `
 SELECT
-       health_check,
+       COALESCE(health_check, 0),
        CASE WHEN health_check THEN (
 		   SELECT COUNT(id) > 0 FROM health_checks WHERE employee_id = ? AND until > CURRENT_TIMESTAMP
 	   ) ELSE 1 END AS health_access,
-       sanitary_check,
+       COALESCE(sanitary_check, 0),
        1 AS sanitary_access -- TODO: handle sanitary_check (there is no tables with data yet)
 FROM (
 	SELECT AVG(health_check) = 1 AS health_check, AVG(sanitary_check) = 1 AS sanitary_check
@@ -61,15 +62,16 @@ FROM (
 	JOIN members USING (group_id)
 	WHERE node_id = ? AND employee_id = ?
 ) AS sub`
-	dest := make(map[string]interface{})
-	if err := r.db.GetContext(ctx, &dest, r.db.Rebind(stmt), nodeID, employeeID); err != nil {
-		return skud.Checks{}, err
+	var healthCheck, healthAccess, sanitaryCheck, sanitaryAccess int
+	row := r.db.QueryRowxContext(ctx, r.db.Rebind(stmt), employeeID, nodeID, employeeID)
+	if err := row.Scan(&healthCheck, &healthAccess, &sanitaryCheck, &sanitaryAccess); err != nil {
+		return skud.Checks{}, translateDBErr(err)
 	}
 	return skud.Checks{
-		HealthCheck:    dest["health_check"].(int) == 1,
-		HealthAccess:   dest["health_access"].(int) == 1,
-		SanitaryCheck:  dest["sanitary_check"].(int) == 1,
-		SanitaryAccess: dest["sanitary_access"].(int) == 1,
+		HealthCheck:    healthCheck == 1,
+		HealthAccess:   healthAccess == 1,
+		SanitaryCheck:  sanitaryCheck == 1,
+		SanitaryAccess: sanitaryAccess == 1,
 	}, nil
 }
 

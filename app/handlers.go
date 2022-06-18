@@ -26,11 +26,13 @@ func HandleCheckAccess(svc accessChecker) http.HandlerFunc {
 		if err != nil {
 			// TODO: log error
 			http.Error(w, "", http.StatusInternalServerError)
+			return
 		}
 		body, _ := json.Marshal(resp)
 		if _, err = w.Write(body); err != nil {
 			// TODO: log error
 			http.Error(w, "", http.StatusInternalServerError)
+			return
 		}
 	}
 }

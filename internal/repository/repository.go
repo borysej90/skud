@@ -2,8 +2,13 @@ package repository
 
 import (
 	"context"
+	"github.com/pkg/errors"
 
 	"skud"
+)
+
+var (
+	ErrNotFound = errors.New("not found")
 )
 
 type Repository interface {

@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"database/sql"
 	"github.com/jmoiron/sqlx"
 
 	"skud"
@@ -21,10 +22,7 @@ func New(db *sqlx.DB) *Repo {
 func (r *Repo) GetEmployeeIDByCode(ctx context.Context, code string) (int64, error) {
 	stmt := "SELECT id FROM employees WHERE card = ? AND active = 1"
 	var ret int64
-	if err := r.db.GetContext(ctx, &ret, r.db.Rebind(stmt), code); err != nil {
-		return 0, err
-	}
-	return ret, nil
+	return ret, translateDBErr(r.db.GetContext(ctx, &ret, r.db.Rebind(stmt), code))
 }
 
 func (r *Repo) GetCurrentAccessNode(ctx context.Context, employeeID int64) (*skud.AccessNode, error) {
@@ -73,4 +71,11 @@ FROM (
 		SanitaryCheck:  dest["sanitary_check"].(int) == 1,
 		SanitaryAccess: dest["sanitary_access"].(int) == 1,
 	}, nil
+}
+
+func translateDBErr(err error) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return repository.ErrNotFound
+	}
+	return err
 }

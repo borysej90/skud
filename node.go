@@ -32,7 +32,7 @@ func (n AccessNode) CanReach(readerID int64) (int64, bool) {
 	}
 	for _, child := range n.Children {
 		if child.EntranceReaderID == readerID {
-			return child.EntranceReaderID, true
+			return child.ID, true
 		}
 	}
 	return 0, false
@@ -40,9 +40,9 @@ func (n AccessNode) CanReach(readerID int64) (int64, bool) {
 
 // GetChild returns pointer to a child with ID equal to nodeID.
 func (n AccessNode) GetChild(nodeID int64) *AccessNode {
-	for i := range n.Children {
-		if n.Children[i].ID == nodeID {
-			return n.Children[i]
+	for _, child := range n.Children {
+		if child.ID == nodeID {
+			return child
 		}
 	}
 	return nil

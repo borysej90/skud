@@ -19,6 +19,9 @@ func New(repo repository.Repository) *SkudService {
 func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcardCode string) (string, bool, error) {
 	employeeID, err := svc.repo.GetEmployeeIDByCode(ctx, passcardCode)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return skud.AccessDeniedUnknownEmployee, false, nil
+		}
 		return "", false, errors.Wrap(err, "failed to get employee ID")
 	}
 	node, err := svc.repo.GetCurrentAccessNode(ctx, employeeID)
@@ -38,16 +41,16 @@ func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcar
 	if err != nil {
 		return "", false, errors.Wrap(err, "failed to get access node required checks")
 	}
-	access := true
-	msg := skud.AccessGranted
-	switch boolToInt(node.Checks.HealthCheck) - boolToInt(node.Checks.SanitaryCheck) {
-	case 0: // both HealthCheck and SanitaryCheck are true or false
+	access = true
+	msg = skud.AccessGranted
+	switch 2*boolToInt(node.Checks.HealthCheck) - boolToInt(node.Checks.SanitaryCheck) {
+	case 1: // both HealthCheck and SanitaryCheck are true
 		msg = skud.AccessGrantedWithAllChecks
 		access = node.Checks.HealthAccess && node.Checks.SanitaryAccess
 		if !access {
 			msg = getDeniedMessage(node.Checks.HealthAccess, node.Checks.SanitaryAccess)
 		}
-	case 1: // HealthCheck is true, SanitaryCheck is false
+	case 2: // HealthCheck is true, SanitaryCheck is false
 		msg = skud.AccessGrantedWithHealthCheck
 		access = node.Checks.HealthAccess
 		if !access {
@@ -59,6 +62,7 @@ func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcar
 		if !access {
 			msg = skud.AccessDeniedNoSanitaryCheck
 		}
+	default:
 	}
 	return msg, access, nil
 }

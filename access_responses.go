@@ -11,4 +11,5 @@ const (
 	AccessDeniedNoAnyChecks        = "доступ заборонений: необхідна відмітка у лікаря та актуальний санітарний одяг"
 
 	AccessDeniedUnknownEmployee = "доступ заборонений: картку не розпізнано"
+	AccessDeniedWrongPath       = "доступ заборонений: невірний шлях"
 )

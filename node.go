@@ -10,10 +10,11 @@ type Checks struct {
 }
 
 type AccessNode struct {
-	ID       int64
-	ParentID int64
-	Name     string
-	Checks   Checks
+	ID           int64
+	ParentID     int64
+	Name         string
+	Checks       Checks
+	TransitiveTo int64
 
 	EntranceReaderID int64
 	ExitReaderID     int64
@@ -35,6 +36,7 @@ func (n AccessNode) CanReach(readerID int64) (int64, bool) {
 			return child.ID, true
 		}
 	}
+
 	return 0, false
 }
 
@@ -49,6 +51,8 @@ func (n AccessNode) GetChild(nodeID int64) *AccessNode {
 }
 
 type TransitionNode struct {
-	FromNode int64
-	ToNode   int64
+	ID         int64
+	FromNode   int64
+	ToNode     int64
+	ParentNode int64
 }

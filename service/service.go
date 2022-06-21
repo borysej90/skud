@@ -32,44 +32,37 @@ func (svc *SkudService) CheckAccess(ctx context.Context, readerID int64, passcar
 	if !ok {
 		return skud.AccessDeniedInaccessible, false, nil
 	}
-	if node.ID == nodeID {
-		// person tries to exit current node
-		return skud.AccessGranted, true, svc.stepUpCurrentNode(ctx, employeeID)
+	transitionNode, err := svc.repo.FindLastActiveTransition(ctx, employeeID)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return "", false, err
 	}
-	defer func() {
-		if access {
-			err = svc.repo.UpdateLastBeen(ctx, employeeID, node.ID)
+	if node.ID == nodeID {
+		// employee tries to exit the node he transitioned to earlier
+		if transitionNode != nil && transitionNode.ToNode == node.ID {
+			return skud.AccessDeniedWrongPath, false, nil
 		}
-	}()
+		// person tries to exit current node
+		return skud.AccessGranted, true, svc.repo.UpdateLastBeen(ctx, employeeID, node.ParentID)
+	}
 	node = node.GetChild(nodeID)
 	node.Checks, err = svc.repo.GetAccessNodeChecks(ctx, employeeID, nodeID)
 	if err != nil {
 		return "", false, errors.Wrap(err, "failed to get access node required checks")
 	}
-	access = true
-	msg = skud.AccessGranted
-	switch 2*boolToInt(node.Checks.HealthCheck) - boolToInt(node.Checks.SanitaryCheck) {
-	case 1: // both HealthCheck and SanitaryCheck are true
-		msg = skud.AccessGrantedWithAllChecks
-		access = node.Checks.HealthAccess && node.Checks.SanitaryAccess
-		if !access {
-			msg = getDeniedMessage(node.Checks.HealthAccess, node.Checks.SanitaryAccess)
-		}
-	case 2: // HealthCheck is true, SanitaryCheck is false
-		msg = skud.AccessGrantedWithHealthCheck
-		access = node.Checks.HealthAccess
-		if !access {
-			msg = skud.AccessDeniedNoHealthCheck
-		}
-	case -1: // HealthCheck is false, SanitaryCheck is true
-		msg = skud.AccessGrantedWithSanitaryCheck
-		access = node.Checks.SanitaryAccess
-		if !access {
-			msg = skud.AccessDeniedNoSanitaryCheck
-		}
-	default:
+	msg, access = verifyChecks(node.Checks)
+	if !access {
+		return msg, access, nil
 	}
-	return msg, access, nil
+	if node.TransitiveTo == 0 {
+		return msg, access, svc.repo.UpdateLastBeen(ctx, employeeID, node.ID)
+
+	}
+	if transitionNode != nil && transitionNode.ParentNode == node.TransitiveTo {
+		err = svc.repo.TransitBackward(ctx, employeeID, transitionNode.ID)
+	} else {
+		err = svc.repo.TransitForward(ctx, employeeID, node.ID)
+	}
+	return msg, access, err
 }
 
 func (svc *SkudService) stepUpCurrentNode(ctx context.Context, employeeID int64) error {
@@ -81,6 +74,33 @@ func (svc *SkudService) stepUpCurrentNode(ctx context.Context, employeeID int64)
 		return svc.repo.UpdateLastBeen(ctx, employeeID, transitionNode.FromNode)
 	}
 	return svc.repo.UpdateLastBeenToParent(ctx, employeeID)
+}
+
+func verifyChecks(checks skud.Checks) (msg string, access bool) {
+	access = true
+	msg = skud.AccessGranted
+	switch 2*boolToInt(checks.HealthCheck) - boolToInt(checks.SanitaryCheck) {
+	case 1: // both HealthCheck and SanitaryCheck are true
+		msg = skud.AccessGrantedWithAllChecks
+		access = checks.HealthAccess && checks.SanitaryAccess
+		if !access {
+			msg = getDeniedMessage(checks.HealthAccess, checks.SanitaryAccess)
+		}
+	case 2: // HealthCheck is true, SanitaryCheck is false
+		msg = skud.AccessGrantedWithHealthCheck
+		access = checks.HealthAccess
+		if !access {
+			msg = skud.AccessDeniedNoHealthCheck
+		}
+	case -1: // HealthCheck is false, SanitaryCheck is true
+		msg = skud.AccessGrantedWithSanitaryCheck
+		access = checks.SanitaryAccess
+		if !access {
+			msg = skud.AccessDeniedNoSanitaryCheck
+		}
+	default:
+	}
+	return
 }
 
 func getDeniedMessage(health, sanitary bool) (msg string) {

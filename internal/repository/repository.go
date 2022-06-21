@@ -31,4 +31,8 @@ type Repository interface {
 	UpdateLastBeen(ctx context.Context, employeeID, nodeID int64) error
 
 	UpdateLastBeenToParent(ctx context.Context, employeeID int64) error
+
+	TransitForward(ctx context.Context, employeeID, fromNode int64) error
+
+	TransitBackward(ctx context.Context, employeeID, transitionNodeID int64) error
 }

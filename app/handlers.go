@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -15,7 +16,7 @@ func HandleCheckAccess(svc accessChecker) http.HandlerFunc {
 		var req checkAccessReq
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			// TODO: log error
+			log.Printf("error while decoding request: %v\n", err)
 			http.Error(w, "", http.StatusInternalServerError)
 		}
 		defer func() {
@@ -24,13 +25,13 @@ func HandleCheckAccess(svc accessChecker) http.HandlerFunc {
 		var resp checkAccessResp
 		resp.Message, resp.Access, err = svc.CheckAccess(r.Context(), req.ReaderID, req.PassCard)
 		if err != nil {
-			// TODO: log error
+			log.Printf("error while processing request: %v\n", err)
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
 		body, _ := json.Marshal(resp)
 		if _, err = w.Write(body); err != nil {
-			// TODO: log error
+			log.Printf("error while writing response: %v\n", err)
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
